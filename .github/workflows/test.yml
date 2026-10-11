@@ -4,6 +4,11 @@ on:
     branches:
       - main
   pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,6 +23,14 @@ jobs:
           gleam-version: ${{ matrix.gleam-version }}
           rebar3-version: "3"
           # elixir-version: "1"
+      - name: Cache verified Hex package archives
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/gleam/hex/hexpm/packages
+          key: gleam-archives-v1-${{ runner.os }}-${{ matrix.gleam-version }}-${{ hashFiles('gleam.toml', 'manifest.toml') }}
+          restore-keys: |
+            gleam-archives-v1-${{ runner.os }}-${{ matrix.gleam-version }}-
+            gleam-archives-v1-${{ runner.os }}-
       - run: gleam deps download
       - run: gleam test
       - run: gleam test --target javascript
@@ -34,6 +47,14 @@ jobs:
           otp-version: "27.1.2"
           gleam-version: "1.18.1"
           rebar3-version: "3"
+      - name: Cache verified Hex package archives
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/gleam/hex/hexpm/packages
+          key: gleam-archives-v1-${{ runner.os }}-stdlib-${{ matrix.stdlib-version }}-${{ hashFiles('gleam.toml', 'manifest.toml') }}
+          restore-keys: |
+            gleam-archives-v1-${{ runner.os }}-stdlib-${{ matrix.stdlib-version }}-
+            gleam-archives-v1-${{ runner.os }}-
       - name: Resolve the selected stdlib version
         env:
           STDLIB_VERSION: ${{ matrix.stdlib-version }}
