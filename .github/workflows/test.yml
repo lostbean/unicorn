@@ -42,10 +42,22 @@ jobs:
           import os
           from pathlib import Path
           manifest = Path("gleam.toml")
-          manifest.write_text(manifest.read_text().replace(
-              ">= 0.64.0 and < 2.0.0", "== " + os.environ["STDLIB_VERSION"]))
+          source = manifest.read_text()
+          expected = ">= 0.64.0 and < 2.0.0"
+          if source.count(expected) != 1:
+              raise SystemExit("Expected exactly one stdlib range to replace")
+          manifest.write_text(source.replace(expected, "== " + os.environ["STDLIB_VERSION"]))
           Path("manifest.toml").unlink()
           PYTHON
           gleam deps download
+          python3 - <<'PYTHON'
+          import os
+          import tomllib
+          from pathlib import Path
+          packages = tomllib.loads(Path("manifest.toml").read_text())["packages"]
+          versions = [p["version"] for p in packages if p["name"] == "gleam_stdlib"]
+          if versions != [os.environ["STDLIB_VERSION"]]:
+              raise SystemExit(f"Unexpected resolved stdlib versions: {versions}")
+          PYTHON
       - run: gleam test
       - run: gleam test --target javascript
