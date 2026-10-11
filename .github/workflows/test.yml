@@ -22,3 +22,30 @@ jobs:
       - run: gleam test
       - run: gleam test --target javascript
       - run: gleam format --check src test
+  stdlib-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        stdlib-version: ["0.64.0", "1.0.5"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.1.2"
+          gleam-version: "1.18.1"
+          rebar3-version: "3"
+      - name: Resolve the selected stdlib version
+        env:
+          STDLIB_VERSION: ${{ matrix.stdlib-version }}
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          manifest = Path("gleam.toml")
+          manifest.write_text(manifest.read_text().replace(
+              ">= 0.64.0 and < 2.0.0", "== " + os.environ["STDLIB_VERSION"]))
+          Path("manifest.toml").unlink()
+          PYTHON
+          gleam deps download
+      - run: gleam test
+      - run: gleam test --target javascript
